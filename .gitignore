@@ -2,3 +2,20 @@ music4all
 music4allOnion
 music4allA+A
 .env
+
+# Model weights / checkpoints
+weights/
+
+# Database files
+src/data/*.db
+src/data/*.sqlite
+src/data/*.sqlite3
+src/data/*.db-journal
+src/data/*.sqlite-journal
+src/data/*.sqlite3-journal
+src/data/*.db-wal
+src/data/*.sqlite-wal
+src/data/*.sqlite3-wal
+src/data/*.db-shm
+src/data/*.sqlite-shm
+src/data/*.sqlite3-shm

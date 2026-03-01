@@ -12,7 +12,7 @@ GEN4REC/
 │   ├── id_tags.csv
 │   └── listening_history.csv
 │
-└── src/data/build_music4all_db.py
+└── src/data/01_build_music4all_db.py
 """
 
 import os
@@ -26,7 +26,7 @@ from typing import Dict
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 MUSIC4ALL_DIR = os.path.join(REPO_ROOT, "music4all")
-DB_PATH = os.path.join(REPO_ROOT, "music4all.db")
+DB_PATH = os.path.join(REPO_ROOT, "src/data/music4all.db")
 
 # -----------------------------
 # Tables to load

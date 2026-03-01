@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import pandas as pd
 import torch
 import torch.nn as nn
@@ -14,17 +15,30 @@ import random
 # ==========================================
 # 1. CONFIGURATION
 # ==========================================
+
+BASE_DIR = Path(__file__).resolve().parent
+REPO_ROOT = BASE_DIR.parent.parent
+
+
+def resolve_path(env_var: str, default_path: Path) -> str:
+    env_value = os.environ.get(env_var)
+    if env_value:
+        return os.path.abspath(os.path.expanduser(env_value))
+    return str(default_path.resolve())
+
+
 class Config:
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    DATASET_PATH = os.path.join(BASE_DIR, "music4all")
-    WEIGHTS_DIR = os.path.join(BASE_DIR, "weights")
+    BASE_DIR = str(BASE_DIR)
+    REPO_ROOT = str(REPO_ROOT)
+    DATASET_PATH = resolve_path("GEN4REC_DATASET_PATH", REPO_ROOT / "music4all")
+    WEIGHTS_DIR = resolve_path("GEN4REC_WEIGHTS_DIR", REPO_ROOT / "weights" / "clap")
 
     CKPT_URL = (
         "https://huggingface.co/lukewys/laion_clap/resolve/main/"
         "music_audioset_epoch_15_esc_90.14.pt?download=true"
     )
-    CKPT_FILENAME = "music_audioset_epoch_15_esc_90.14.pt"
-    CKPT_PATH = os.path.join(WEIGHTS_DIR, CKPT_FILENAME)
+    CKPT_FILENAME = os.environ.get("GEN4REC_CLAP_BASE_CKPT_NAME", "music_audioset_epoch_15_esc_90.14.pt")
+    CKPT_PATH = resolve_path("GEN4REC_CLAP_BASE_CKPT_PATH", Path(WEIGHTS_DIR) / CKPT_FILENAME)
 
     AUDIO_DIR = os.path.join(DATASET_PATH, "audios")
     SAMPLE_RATE = 48000

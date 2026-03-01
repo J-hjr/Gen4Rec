@@ -30,9 +30,56 @@ If `environment.yaml` defines a name (for example `gen4rec`), activate it with:
 conda activate gen4rec
 ```
 
+### CLAP model/checkpoint paths (robust default)
+
+By default, embedding and fine-tuning scripts now use:
+
+```text
+Gen4Rec/weights/clap/
+├── music_audioset_epoch_15_esc_90.14.pt
+└── clap_finetuned_best.pt
+```
+
+You can override paths via environment variables:
+
+```bash
+export GEN4REC_DATASET_PATH="/path/to/music4all"
+export GEN4REC_WEIGHTS_DIR="/path/to/weights/clap"
+export GEN4REC_CLAP_BASE_CKPT_PATH="/path/to/music_audioset_epoch_15_esc_90.14.pt"
+export GEN4REC_CLAP_FINETUNED_CKPT_PATH="/path/to/clap_finetuned_best.pt"
+```
+
 ---
 
-## 2) Current workspace snapshot
+## 2) Where to put files
+
+Use this as the default file placement guide.
+
+### Dataset
+
+- Put Music4All under: `Gen4Rec/music4all/`
+- Required files include: `id_information.csv`, `id_genres.csv`, `id_tags.csv`, `listening_history.csv`
+- Audio folder should be: `Gen4Rec/music4all/audios/`
+
+### CLAP checkpoints
+
+- Put CLAP checkpoints under: `Gen4Rec/weights/clap/`
+- Base checkpoint filename: `music_audioset_epoch_15_esc_90.14.pt`
+- Fine-tuned checkpoint filename: `clap_finetuned_best.pt`
+
+### Database
+
+- Default SQLite output from DB builder: `Gen4Rec/music4all.db`
+- If you manually create another DB (for experiments), keep it in one place (recommended: `Gen4Rec/src/data/`) and use an explicit filename.
+
+### Notebooks and outputs
+
+- Notebook files: `Gen4Rec/notebooks/` or `Gen4Rec/src/data/` (for SQL exploration)
+- Generated embeddings/indexes from embed scripts are saved to `weights/clap/` by default.
+
+---
+
+## 3) Current workspace snapshot
 
 ```text
 Gen4Rec/
@@ -67,7 +114,7 @@ Notes:
 
 ---
 
-## 3) Repository structure (project layout)
+## 4) Repository structure (project layout)
 
 ```text
 gen4rec/
