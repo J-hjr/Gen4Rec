@@ -47,6 +47,7 @@ export GEN4REC_DATASET_PATH="/path/to/music4all"
 export GEN4REC_WEIGHTS_DIR="/path/to/weights/clap"
 export GEN4REC_CLAP_BASE_CKPT_PATH="/path/to/music_audioset_epoch_15_esc_90.14.pt"
 export GEN4REC_CLAP_FINETUNED_CKPT_PATH="/path/to/clap_finetuned_best.pt"
+export GEN4REC_EMBED_OUTPUT_DIR="/path/to/outputs/embeddings/music4all"
 ```
 
 ---
@@ -75,7 +76,7 @@ Use this as the default file placement guide.
 ### Notebooks and outputs
 
 - Notebook files: `Gen4Rec/notebooks/` or `Gen4Rec/src/data/` (for SQL exploration)
-- Generated embeddings/indexes from embed scripts are saved to `weights/clap/` by default.
+- Generated embeddings/indexes from embed scripts are saved to `Gen4Rec/outputs/embeddings/music4all/` by default.
 
 ---
 

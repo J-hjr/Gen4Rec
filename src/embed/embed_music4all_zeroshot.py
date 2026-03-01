@@ -22,8 +22,8 @@ except ImportError:
 # 1. CONFIGURATION
 # ==========================================
 
-BASE_DIR = Path(__file__).resolve().parent
-REPO_ROOT = BASE_DIR.parent.parent
+BASE_DIR_PATH = Path(__file__).resolve().parent
+REPO_ROOT_PATH = BASE_DIR_PATH.parent.parent
 
 
 def resolve_path(env_var: str, default_path: Path) -> str:
@@ -34,10 +34,14 @@ def resolve_path(env_var: str, default_path: Path) -> str:
 
 
 class Config:
-    BASE_DIR = str(BASE_DIR)
-    REPO_ROOT = str(REPO_ROOT)
-    DATASET_PATH = resolve_path("GEN4REC_DATASET_PATH", REPO_ROOT / "music4all")
-    WEIGHTS_DIR = resolve_path("GEN4REC_WEIGHTS_DIR", REPO_ROOT / "weights" / "clap")
+    BASE_DIR = str(BASE_DIR_PATH)
+    REPO_ROOT = str(REPO_ROOT_PATH)
+    DATASET_PATH = resolve_path("GEN4REC_DATASET_PATH", REPO_ROOT_PATH / "music4all")
+    WEIGHTS_DIR = resolve_path("GEN4REC_WEIGHTS_DIR", REPO_ROOT_PATH / "weights" / "clap")
+    EMBEDDINGS_DIR = resolve_path(
+        "GEN4REC_EMBED_OUTPUT_DIR",
+        REPO_ROOT_PATH / "outputs" / "embeddings" / "music4all",
+    )
 
     # Base CLAP checkpoint (same as you used for finetuning)
     CKPT_FILENAME = os.environ.get("GEN4REC_CLAP_BASE_CKPT_NAME", "music_audioset_epoch_15_esc_90.14.pt")
@@ -272,9 +276,9 @@ def embed_music4all_zeroshot():
     print(f"[Zero-shot] Embeddings shape: {all_embs.shape}")
     print(f"[Zero-shot] Num IDs: {all_ids.shape[0]}")
 
-    os.makedirs(Config.WEIGHTS_DIR, exist_ok=True)
-    emb_path = os.path.join(Config.WEIGHTS_DIR, "music4all_embeddings_zeroshot.npy")
-    ids_path = os.path.join(Config.WEIGHTS_DIR, "music4all_ids.npy")
+    os.makedirs(Config.EMBEDDINGS_DIR, exist_ok=True)
+    emb_path = os.path.join(Config.EMBEDDINGS_DIR, "music4all_embeddings_zeroshot.npy")
+    ids_path = os.path.join(Config.EMBEDDINGS_DIR, "music4all_ids.npy")
 
     np.save(emb_path, all_embs)
     np.save(ids_path, all_ids)
@@ -305,7 +309,7 @@ def main():
     ids, embs, dim = embed_music4all_zeroshot()
 
     # OPTIONAL: create FAISS index for zero-shot baseline
-    index_path = os.path.join(Config.WEIGHTS_DIR, "music4all_faiss_zeroshot.index")
+    index_path = os.path.join(Config.EMBEDDINGS_DIR, "music4all_faiss_zeroshot.index")
     build_faiss_index_zeroshot(embs, dim, index_path)
 
 

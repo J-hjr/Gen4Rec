@@ -6,6 +6,9 @@ music4allA+A
 # Model weights / checkpoints
 weights/
 
+# Generated outputs
+outputs
+
 # Database files
 src/data/*.db
 src/data/*.sqlite

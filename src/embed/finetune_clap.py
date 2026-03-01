@@ -16,8 +16,8 @@ import random
 # 1. CONFIGURATION
 # ==========================================
 
-BASE_DIR = Path(__file__).resolve().parent
-REPO_ROOT = BASE_DIR.parent.parent
+BASE_DIR_PATH = Path(__file__).resolve().parent
+REPO_ROOT_PATH = BASE_DIR_PATH.parent.parent
 
 
 def resolve_path(env_var: str, default_path: Path) -> str:
@@ -28,10 +28,10 @@ def resolve_path(env_var: str, default_path: Path) -> str:
 
 
 class Config:
-    BASE_DIR = str(BASE_DIR)
-    REPO_ROOT = str(REPO_ROOT)
-    DATASET_PATH = resolve_path("GEN4REC_DATASET_PATH", REPO_ROOT / "music4all")
-    WEIGHTS_DIR = resolve_path("GEN4REC_WEIGHTS_DIR", REPO_ROOT / "weights" / "clap")
+    BASE_DIR = str(BASE_DIR_PATH)
+    REPO_ROOT = str(REPO_ROOT_PATH)
+    DATASET_PATH = resolve_path("GEN4REC_DATASET_PATH", REPO_ROOT_PATH / "music4all")
+    WEIGHTS_DIR = resolve_path("GEN4REC_WEIGHTS_DIR", REPO_ROOT_PATH / "weights" / "clap")
 
     CKPT_URL = (
         "https://huggingface.co/lukewys/laion_clap/resolve/main/"
