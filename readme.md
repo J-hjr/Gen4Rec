@@ -92,7 +92,9 @@ Gen4Rec/
 │   └── music4allOnion_data.ipynb
 ├── src/
 │   ├── data/
-│   │   └── build_music4all_db.py
+│   │   ├── 01_build_music4all_db.py
+│   │   ├── 02_download_clap.py
+│   │   └── query.ipynb
 │   ├── embed/
 │   │   ├── embed_music4all.py
 │   │   ├── embed_music4all_zeroshot.py
@@ -100,6 +102,7 @@ Gen4Rec/
 │   ├── eval/
 │   ├── generate/
 │   └── pipeline/
+├── weights/
 ├── music4all
 ├── music4allA+A
 └── music4allOnion
@@ -109,7 +112,9 @@ Notes:
 - Fine-tuning script: `src/embed/finetune_clap.py`
 - Zero-shot embedding script: `src/embed/embed_music4all_zeroshot.py`
 - Standard embedding script: `src/embed/embed_music4all.py`
-- Music4All DB build script: `src/data/build_music4all_db.py`
+- Music4All DB build script: `src/data/01_build_music4all_db.py`
+- CLAP checkpoint download script: `src/data/02_download_clap.py`
+- SQL exploration notebook: `src/data/query.ipynb`
 - Data-check notebooks: `notebooks/music4all_data_check.ipynb` and `notebooks/music4allOnion_data.ipynb`
 
 ---
