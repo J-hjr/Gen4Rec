@@ -91,6 +91,7 @@ Gen4Rec/
 ├── notebooks/
 │   ├── music4all_data_check.ipynb
 │   └── music4allOnion_data.ipynb
+├── milestone
 ├── src/
 │   ├── data/
 │   │   ├── 01_build_music4all_db.py
@@ -226,5 +227,6 @@ gen4rec/
 	├─ profiles/
 	├─ embeddings/
 	└─ reports/
+├── milestone
 ```
 

@@ -50,9 +50,9 @@ class Config:
     AUDIO_DIR = os.path.join(DATASET_PATH, "audios")
     SAMPLE_RATE = 48000
 
-    CHUNK_DURATION = 10.0  # seconds
+    CHUNK_DURATION = 6.0  # seconds
     CHUNK_SAMPLES = int(SAMPLE_RATE * CHUNK_DURATION)
-    NUM_CHUNKS = 4         # keep same as finetune for fair comparison
+    NUM_CHUNKS = 5         # keep same as finetune for fair comparison
 
     BATCH_SIZE = 32
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
