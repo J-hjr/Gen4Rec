@@ -4,9 +4,14 @@
 
 All paths are relative to the repo root.
 
+### What to keep under version control (team workflow)
+
+- **In Git:** `outputs/embeddings/music4all/*.npy` — embedding arrays are tracked (see `.gitignore`).
+- **Not in Git:** `music4all/**/*.csv` (too large), `music4all/audios/`, and `weights/` — obtain CSVs and audio locally or via shared storage; place them under `music4all/` on each machine. You do not need weights if `music4all_embeddings.npy` already exists.
+
 ### Dataset: `music4all/`
 
-Place the Music4All CSVs here (tab-separated where applicable):
+These files are **not** in the repository (ignored by `.gitignore`); download or copy them locally. Expected layout (tab-separated CSVs where applicable):
 
 - `listening_history.csv`
 - `id_genres.csv`

@@ -1,4 +1,7 @@
-music4all
+# Dataset: CSVs are too large for Git — keep locally or share outside the repo
+music4all/**/*.csv
+music4all/audios/
+
 music4allOnion
 music4allA+A
 .env
@@ -6,8 +9,13 @@ music4allA+A
 # Model weights / checkpoints
 weights/
 
-# Generated outputs
-outputs
+# Generated outputs: allow committing *.npy (e.g. under outputs/embeddings/music4all/)
+outputs/*
+!outputs/embeddings/
+outputs/embeddings/*
+!outputs/embeddings/music4all/
+outputs/embeddings/music4all/*
+!outputs/embeddings/music4all/*.npy
 
 # Database files
 src/data/*.db
