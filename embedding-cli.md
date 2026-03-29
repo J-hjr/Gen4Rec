@@ -6,7 +6,7 @@ All paths are relative to the repo root.
 
 ### What to keep under version control (team workflow)
 
-- **In Git:** `outputs/embeddings/music4all/*.npy` — embedding arrays are tracked (see `.gitignore`).
+- **In Git:** `outputs/embeddings/music4all/*.npy` — embedding arrays are tracked (see `.gitignore`). The large song matrix `music4all_embeddings.npy` is stored with **Git LFS** (see `.gitattributes`); after `git clone`, run `git lfs pull` (or ensure Git LFS is installed so files are fetched automatically).
 - **Not in Git:** `music4all/**/*.csv` (too large), `music4all/audios/`, and `weights/` — obtain CSVs and audio locally or via shared storage; place them under `music4all/` on each machine. You do not need weights if `music4all_embeddings.npy` already exists.
 
 ### Dataset: `music4all/`
