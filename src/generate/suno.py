@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
+import re
 
 import requests
 
@@ -33,6 +34,11 @@ class SunoGenerator:
         response = requests.get(url, timeout=300)
         response.raise_for_status()
         target_path.write_bytes(response.content)
+
+    def _slugify_title(self, title: str | None, fallback: str = "generated_song") -> str:
+        raw = (title or "").strip() or fallback
+        slug = re.sub(r"[^A-Za-z0-9]+", "_", raw).strip("_").lower()
+        return slug or fallback
 
     def generate(self, spec: GenerationSpec, output_dir: Path) -> GenerationResult:
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -70,9 +76,11 @@ class SunoGenerator:
             audio_url = str(item.get("audio_url", "")).strip()
             if not audio_url:
                 continue
-            sample_path = output_dir / f"suno_variant_{idx:02d}.mp3"
-            lyric_path = output_dir / f"suno_variant_{idx:02d}_lyrics.txt"
-            metadata_path = output_dir / f"suno_variant_{idx:02d}.json"
+            title = str(item.get("title", "")).strip() or None
+            base_name = f"{self._slugify_title(title)}_variant_{idx:02d}"
+            sample_path = output_dir / f"{base_name}.mp3"
+            lyric_path = output_dir / f"{base_name}_lyrics.txt"
+            metadata_path = output_dir / f"{base_name}.json"
 
             self._download_audio(audio_url, sample_path)
             lyric_path.write_text(str(item.get("lyric", "")), encoding="utf-8")
@@ -84,6 +92,9 @@ class SunoGenerator:
                     mime_type="audio/mpeg",
                     text_companion=str(lyric_path),
                     source_url=audio_url,
+                    metadata_path=str(metadata_path),
+                    variant_index=idx,
+                    title=title,
                 )
             )
 

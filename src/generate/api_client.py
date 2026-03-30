@@ -30,8 +30,17 @@ class AceSunoApiClient:
         self.api_key = api_key or os.getenv("ACE_SUNO_API_KEY")
         if not self.api_key:
             raise ValueError("ACE_SUNO_API_KEY not found. Please export your ACE Suno API key first.")
+        self.api_key = self._normalize_api_key(self.api_key)
         self.timeout_seconds = timeout_seconds
         self.base_url = base_url
+
+    @staticmethod
+    def _normalize_api_key(api_key: str) -> str:
+        """Accept either a raw token or a 'Bearer <token>' string."""
+        normalized = api_key.strip()
+        if normalized.lower().startswith("bearer "):
+            normalized = normalized[7:].strip()
+        return normalized
 
     def generate_music(
         self,

@@ -29,6 +29,8 @@ export ACE_SUNO_API_KEY="..."
 
 ```bash
 python src/generate/run_generate.py --prompt-json outputs/profiles/<USER_ID>_prompt.json
+python src/generate/run_generate.py --prompt-json outputs/profiles/<USER_ID>_prompt.json --num-calls 5
+python src/generate/run_generate.py --prompt-json outputs/profiles/<USER_ID>_prompt.json --num-calls 5 --max-concurrency 2
 python src/generate/run_generate.py --prompt-json outputs/profiles/<USER_ID>_prompt.json --negative-prompt "heavy EDM drops, aggressive distortion"
 python src/generate/run_generate.py --prompt-json outputs/profiles/<USER_ID>_prompt.json --lyrics-file lyrics.txt --generation-model chirp-v4-5
 ```
@@ -38,7 +40,9 @@ What it does:
 - reads an existing prompt JSON from the current profile-prompt pipeline
 - converts it into a normalized generation spec
 - calls the ACE Data Suno-compatible API
-- downloads the returned audio variants
+- can repeat the API call multiple times for the same prompt
+- supports bounded parallel sampling with a low concurrency cap
+- downloads all returned audio variants into one run folder
 - saves a run manifest and markdown report
 
 | Parameter | Meaning |
@@ -47,6 +51,8 @@ What it does:
 | `--user-id` | Optional override if you want the output folder to use a different user ID than the JSON. |
 | `--provider` | Provider name recorded in manifests (default `suno`). |
 | `--generation-model` | Hosted music model name (default `chirp-v4-5`). |
+| `--num-calls` | How many API calls to make for the same prompt (default `1`). Each Suno call can return two candidate clips. |
+| `--max-concurrency` | Maximum number of API calls to run in parallel (default `2`). Keep this low to reduce the chance of API throttling or auth issues. |
 | `--negative-prompt` | Optional negative style guidance passed to the API. |
 | `--lyrics-file` | Optional text file whose contents are sent as lyrics. If omitted, generation defaults to instrumental mode. |
 | `--tempo-hint-bpm` | Optional BPM hint stored in the generation spec for future use. |
@@ -79,10 +85,13 @@ Each run currently saves:
 
 - `prompt_input.json`
 - `generation_spec.json`
-- `audio/suno_variant_01.mp3`
-- `audio/suno_variant_02.mp3` (if returned)
+- `audio/call_01/<song_name>_variant_01.mp3`
+- `audio/call_01/<song_name>_variant_02.mp3` (if returned)
+- `audio/call_02/...` through `audio/call_05/...` when you use repeated calls
 - per-variant lyric and metadata sidecar files
 - `run_manifest.json`
 - `report.md`
+
+`run_manifest.json` also includes a `candidate_audio_paths` list so the next rerank stage can directly consume the generated clip paths.
 
 This stage does not modify the current `profile_prompt` implementation. It only consumes its output.

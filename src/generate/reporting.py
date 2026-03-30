@@ -43,6 +43,8 @@ def write_markdown_report(
 ) -> None:
     profile = build_user_facing_profile(prompt_output)
     sample_lines = [f"- `{sample.path}` ({sample.mime_type})" for sample in result.samples] or ["- No audio samples saved"]
+    total_calls = result.response_metadata.get("call_count", 1)
+    total_candidates = result.response_metadata.get("variant_count", len(result.samples))
     report = f"""# Music Generation Run
 
 ## Summary
@@ -51,11 +53,14 @@ def write_markdown_report(
 - User ID: `{user_id}`
 - Provider: `{provider}`
 - Model: `{result.model}`
+- API calls made: `{total_calls}`
+- Candidate clips saved: `{total_candidates}`
 
 ## Methodology
 
 - This run reuses an existing prompt JSON from the current `profile_prompt` pipeline.
 - The generation backend consumes a normalized generation spec and sends it to the hosted Suno-compatible provider.
+- Multiple API calls can be used to sample a larger candidate pool before reranking.
 
 ## Results
 
@@ -83,6 +88,7 @@ def write_markdown_report(
 - Compare this API-first output with a future open-source generation backend.
 - Tailor the current profile-prompt output more directly for Suno-style generation.
 - Add CLAP-based alignment checks between generated audio and the target user embedding.
+- Rerank the candidate clips by CLAP cosine similarity against the user embedding.
 
 ## Work Plan
 
