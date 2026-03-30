@@ -30,3 +30,26 @@ src/data/*.sqlite3-wal
 src/data/*.db-shm
 src/data/*.sqlite-shm
 src/data/*.sqlite3-shm
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# macOS / editor
+.DS_Store
+.vscode/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs
+*.log
+
+# Local test / temp files
+tmp/
+temp/
