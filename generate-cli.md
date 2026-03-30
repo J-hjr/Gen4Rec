@@ -1,0 +1,88 @@
+# Generate CLI
+
+## Required files
+
+The current generate stage reuses an existing prompt JSON from the profile-prompt pipeline.
+
+Recommended upstream command:
+
+```bash
+python src/profile_prompt/generate_user_profile_and_prompt.py --input outputs/profiles/<USER_ID>_summary.json --output outputs/profiles/<USER_ID>_prompt.json
+```
+
+This file should contain:
+
+- `user_id`
+- `profile_paragraph`
+- `suno_generation_prompt`
+- `style_keywords`
+
+## Environment variables
+
+The current API path uses the ACE Data Suno-compatible API:
+
+```bash
+export ACE_SUNO_API_KEY="..."
+```
+
+## Suno generation (`run_generate.py`)
+
+```bash
+python src/generate/run_generate.py --prompt-json outputs/profiles/<USER_ID>_prompt.json
+python src/generate/run_generate.py --prompt-json outputs/profiles/<USER_ID>_prompt.json --negative-prompt "heavy EDM drops, aggressive distortion"
+python src/generate/run_generate.py --prompt-json outputs/profiles/<USER_ID>_prompt.json --lyrics-file lyrics.txt --generation-model chirp-v4-5
+```
+
+What it does:
+
+- reads an existing prompt JSON from the current profile-prompt pipeline
+- converts it into a normalized generation spec
+- calls the ACE Data Suno-compatible API
+- downloads the returned audio variants
+- saves a run manifest and markdown report
+
+| Parameter | Meaning |
+|-----------|---------|
+| `--prompt-json` | **Required.** Path to an existing prompt JSON. |
+| `--user-id` | Optional override if you want the output folder to use a different user ID than the JSON. |
+| `--provider` | Provider name recorded in manifests (default `suno`). |
+| `--generation-model` | Hosted music model name (default `chirp-v4-5`). |
+| `--negative-prompt` | Optional negative style guidance passed to the API. |
+| `--lyrics-file` | Optional text file whose contents are sent as lyrics. If omitted, generation defaults to instrumental mode. |
+| `--tempo-hint-bpm` | Optional BPM hint stored in the generation spec for future use. |
+| `--duration-hint-seconds` | Optional duration hint stored in the generation spec for future use. |
+| `--prompt-version` | Version string recorded in the saved generation spec. |
+
+## Output layout
+
+All generated files are written under:
+
+```text
+outputs/recSongs/<USER_ID>/<RUN_ID>/
+```
+
+`RUN_ID` is an auto-generated run identifier in this format:
+
+```text
+<UTC_TIMESTAMP>-<USER_ID>-<PROVIDER>
+```
+
+Example:
+
+```text
+20260330T213650Z-user_007XIjOr-suno
+```
+
+This helps keep multiple runs for the same user separate and prevents files from being overwritten.
+
+Each run currently saves:
+
+- `prompt_input.json`
+- `generation_spec.json`
+- `audio/suno_variant_01.mp3`
+- `audio/suno_variant_02.mp3` (if returned)
+- per-variant lyric and metadata sidecar files
+- `run_manifest.json`
+- `report.md`
+
+This stage does not modify the current `profile_prompt` implementation. It only consumes its output.

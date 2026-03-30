@@ -10,6 +10,12 @@ This repository uses `environment.yaml` to manage dependencies.
 conda env create -f environment.yaml
 ```
 
+## TODO
+
+- Reorganize the repository input and output structure so file locations are clear and consistent.
+- Make sure every pipeline step uses aligned inputs and outputs end-to-end, with no path or naming mismatches.
+- Decide on a clear storage strategy for embedding files and make sure their placement is consistent across the project (Cloud or Local).
+
 ### Update an existing environment
 
 ```bash
@@ -126,7 +132,7 @@ Notes:
 ```text
 gen4rec/
 ├─ README.md
-├─ pyproject.toml                 # or requirements.txt / environment.yml
+├─ environment.yaml               
 ├─ .env.example                   # DB_URL, DATA_ROOT, MODEL_CACHE, etc.
 ├─ .gitignore
 ├─ Makefile                       # common commands: lint/test/run pipeline

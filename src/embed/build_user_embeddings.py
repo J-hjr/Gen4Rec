@@ -1,3 +1,43 @@
+"""
+Build user embedding vectors from recent listening history.
+
+This module converts per-user listening events into dense user representations
+that can be used for nearest-neighbor retrieval against song embeddings.
+
+Inputs
+- `listening_history.csv`: user-song interaction history, optionally with
+  timestamps for recency ordering.
+- `music4all_embeddings.npy`: normalized song embedding matrix with one row per
+  song.
+- `music4all_ids.npy` or `id_genres.csv`: mapping from song IDs to embedding
+  rows.
+
+Processing overview
+1. Load and normalize listening-history columns into `user_id`, `song_id`, and
+   `timestamp`.
+2. For each user, keep only the most recent `K` events.
+3. Collapse repeated songs, preserving first recency rank and play count.
+4. Remove incoherent outliers using a medoid-based similarity filter so a
+   single off-topic listen does not dominate the user profile.
+5. Compute a weighted average of the remaining song embeddings using:
+   - exponential recency decay
+   - logarithmic frequency boost for repeated listens
+6. L2-normalize the final vector so cosine similarity can be used directly for
+   retrieval.
+
+Outputs
+- `user_embeddings.npy`: row-aligned matrix of user embedding vectors.
+- `user_ids.npy`: user IDs corresponding to `user_embeddings.npy`.
+- `user_embedding_stats.csv`: per-user diagnostics for recent events and songs
+  kept after coherence filtering.
+
+Operational notes
+- If `music4all_ids.npy` is missing, the script can recreate it from
+  `id_genres.csv`, but the row order must match `music4all_embeddings.npy`.
+- Environment variables such as `GEN4REC_DATASET_PATH` and
+  `GEN4REC_EMBED_OUTPUT_DIR` can override the default repo-relative paths.
+"""
+
 import argparse
 import os
 from pathlib import Path

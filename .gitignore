@@ -1,6 +1,8 @@
 # Dataset: CSVs are too large for Git — keep locally or share outside the repo
 music4all/**/*.csv
 music4all/audios/
+music4all/*.csv
+music4all
 
 music4allOnion
 music4allA+A
