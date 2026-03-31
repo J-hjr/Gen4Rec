@@ -260,6 +260,26 @@ def rerank_candidates(
     }
 
 
+def run_rerank_from_manifest(
+    *,
+    manifest_path: str | Path,
+    top_k: int = 2,
+    diversity_threshold: float | None = None,
+    encoder: str = "auto",
+    output_path: str | Path | None = None,
+) -> tuple[dict[str, Any], str]:
+    manifest = load_manifest(manifest_path)
+    resolved_output_path = str(output_path or Path(manifest_path).with_name("rerank_results.json"))
+    rerank_result = rerank_candidates(
+        manifest=manifest,
+        top_k=max(1, top_k),
+        diversity_threshold=diversity_threshold,
+        encoder=encoder,
+    )
+    save_json(rerank_result, resolved_output_path)
+    return rerank_result, resolved_output_path
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Rerank generated candidate clips by CLAP cosine similarity.")
     parser.add_argument("--manifest", required=True, help="Path to a generation run manifest JSON.")
@@ -283,15 +303,13 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    manifest = load_manifest(args.manifest)
-    output_path = args.output or str(Path(args.manifest).with_name("rerank_results.json"))
-    rerank_result = rerank_candidates(
-        manifest=manifest,
+    rerank_result, output_path = run_rerank_from_manifest(
+        manifest_path=args.manifest,
         top_k=max(1, args.top_k),
         diversity_threshold=args.diversity_threshold,
         encoder=args.encoder,
+        output_path=args.output,
     )
-    save_json(rerank_result, output_path)
 
     print("Rerank completed.")
     print(f"Output: {output_path}")

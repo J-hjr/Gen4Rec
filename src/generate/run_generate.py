@@ -24,7 +24,7 @@ if str(REPO_ROOT) not in sys.path:
 from src.generate.artifacts import build_artifact_paths
 from src.generate.base import GenerationResult, GenerationSpec
 from src.generate.open_source_stub import OpenSourceGeneratorStub
-from src.generate.reporting import build_user_facing_profile, save_json, write_markdown_report
+from src.generate.reporting import save_json, write_markdown_report
 from src.generate.suno import SunoGenerator
 
 
@@ -116,6 +116,95 @@ def _run_single_generation_call(
     return generator.generate(spec, call_dir)
 
 
+def run_generation_pipeline(
+    *,
+    prompt_output: dict,
+    provider: str = "suno",
+    generation_model: str = "chirp-v4-5",
+    user_id: str | None = None,
+    num_calls: int = 1,
+    max_concurrency: int = 2,
+    negative_prompt: str | None = None,
+    lyrics: str = "",
+    tempo_hint_bpm: int | None = None,
+    duration_hint_seconds: int | None = None,
+    prompt_version: str = "existing-profile-prompt-v1",
+) -> tuple[str, dict, str]:
+    resolved_user_id = user_id or str(prompt_output["user_id"])
+    run_id, artifact_paths = build_artifact_paths(user_id=resolved_user_id, provider=provider)
+    artifact_paths.ensure_directories()
+    save_json(prompt_output, artifact_paths.prompt_input_json)
+
+    spec = build_generation_spec(
+        prompt_output,
+        provider_target=provider,
+        prompt_version=prompt_version,
+        negative_prompt=negative_prompt,
+        lyrics=lyrics,
+        tempo_hint_bpm=tempo_hint_bpm,
+        duration_hint_seconds=duration_hint_seconds,
+    )
+    save_json(spec.to_dict(), artifact_paths.generation_spec_json)
+
+    total_calls = max(1, num_calls)
+    bounded_concurrency = max(1, min(max_concurrency, total_calls))
+
+    call_results_by_index: dict[int, GenerationResult] = {}
+    with ThreadPoolExecutor(max_workers=bounded_concurrency) as executor:
+        future_to_call_index = {}
+        for call_index in range(1, total_calls + 1):
+            call_dir = artifact_paths.audio_dir / f"call_{call_index:02d}"
+            future = executor.submit(
+                _run_single_generation_call,
+                provider=provider,
+                model=generation_model,
+                spec=spec,
+                call_dir=call_dir,
+            )
+            future_to_call_index[future] = call_index
+
+        for future in as_completed(future_to_call_index):
+            call_index = future_to_call_index[future]
+            call_results_by_index[call_index] = future.result()
+
+    call_results = [call_results_by_index[idx] for idx in sorted(call_results_by_index)]
+    merged_result = merge_generation_results(call_results)
+    candidate_audio_paths = [sample.path for sample in merged_result.samples]
+
+    manifest = {
+        "run_id": run_id,
+        "user_id": resolved_user_id,
+        "provider": provider,
+        "generation_model": generation_model,
+        "num_calls": total_calls,
+        "max_concurrency": bounded_concurrency,
+        "artifacts": artifact_paths.to_dict(),
+        "generation_spec": spec.to_dict(),
+        "candidate_audio_paths": candidate_audio_paths,
+        "rerank_ready": {
+            "user_id": resolved_user_id,
+            "candidate_count": len(candidate_audio_paths),
+            "next_inputs": {
+                "user_id": resolved_user_id,
+                "user_embedding": "load from outputs/embeddings/music4all/user_embeddings.npy",
+                "generated_audio_file_paths": candidate_audio_paths,
+            },
+        },
+        "result": merged_result.to_dict(),
+    }
+    save_json(manifest, artifact_paths.manifest_json)
+    write_markdown_report(
+        path=artifact_paths.report_md,
+        run_id=run_id,
+        user_id=resolved_user_id,
+        provider=provider,
+        prompt_output=prompt_output,
+        spec=spec,
+        result=merged_result,
+    )
+    return run_id, manifest, str(artifact_paths.manifest_json)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the Suno generation pipeline from an existing prompt JSON.")
     parser.add_argument("--prompt-json", required=True, help="Path to an existing prompt JSON from the profile-prompt stage.")
@@ -137,91 +226,28 @@ def main() -> None:
     args = parser.parse_args()
 
     prompt_output = json.loads(Path(args.prompt_json).read_text(encoding="utf-8"))
-    user_id = args.user_id or str(prompt_output["user_id"])
-
-    run_id, artifact_paths = build_artifact_paths(user_id=user_id, provider=args.provider)
-    artifact_paths.ensure_directories()
-    save_json(prompt_output, artifact_paths.prompt_input_json)
-    user_profile = build_user_facing_profile(prompt_output)
-
     lyrics = ""
     if args.lyrics_file:
         lyrics = Path(args.lyrics_file).read_text(encoding="utf-8")
 
-    spec = build_generation_spec(
-        prompt_output,
-        provider_target=args.provider,
-        prompt_version=args.prompt_version,
+    run_id, manifest, manifest_path = run_generation_pipeline(
+        prompt_output=prompt_output,
+        provider=args.provider,
+        generation_model=args.generation_model,
+        user_id=args.user_id,
+        num_calls=args.num_calls,
+        max_concurrency=args.max_concurrency,
         negative_prompt=args.negative_prompt,
         lyrics=lyrics,
         tempo_hint_bpm=args.tempo_hint_bpm,
         duration_hint_seconds=args.duration_hint_seconds,
-    )
-    save_json(spec.to_dict(), artifact_paths.generation_spec_json)
-
-    total_calls = max(1, args.num_calls)
-    max_concurrency = max(1, min(args.max_concurrency, total_calls))
-
-    call_results_by_index: dict[int, GenerationResult] = {}
-    with ThreadPoolExecutor(max_workers=max_concurrency) as executor:
-        future_to_call_index = {}
-        for call_index in range(1, total_calls + 1):
-            call_dir = artifact_paths.audio_dir / f"call_{call_index:02d}"
-            future = executor.submit(
-                _run_single_generation_call,
-                provider=args.provider,
-                model=args.generation_model,
-                spec=spec,
-                call_dir=call_dir,
-            )
-            future_to_call_index[future] = call_index
-
-        for future in as_completed(future_to_call_index):
-            call_index = future_to_call_index[future]
-            call_results_by_index[call_index] = future.result()
-
-    call_results = [call_results_by_index[idx] for idx in sorted(call_results_by_index)]
-
-    merged_result = merge_generation_results(call_results)
-    candidate_audio_paths = [sample.path for sample in merged_result.samples]
-
-    manifest = {
-        "run_id": run_id,
-        "user_id": user_id,
-        "provider": args.provider,
-        "generation_model": args.generation_model,
-        "num_calls": total_calls,
-        "max_concurrency": max_concurrency,
-        "artifacts": artifact_paths.to_dict(),
-        "generation_spec": spec.to_dict(),
-        "candidate_audio_paths": candidate_audio_paths,
-        "rerank_ready": {
-            "user_id": user_id,
-            "candidate_count": len(candidate_audio_paths),
-            "next_inputs": {
-                "user_id": user_id,
-                "user_embedding": "load from outputs/embeddings/music4all/user_embeddings.npy",
-                "generated_audio_file_paths": candidate_audio_paths,
-            },
-        },
-        "result": merged_result.to_dict(),
-    }
-    save_json(manifest, artifact_paths.manifest_json)
-    write_markdown_report(
-        path=artifact_paths.report_md,
-        run_id=run_id,
-        user_id=user_id,
-        provider=args.provider,
-        prompt_output=prompt_output,
-        spec=spec,
-        result=merged_result,
+        prompt_version=args.prompt_version,
     )
 
     print("Generation run completed.")
     print(f"Run ID: {run_id}")
-    print(f"Generation spec: {artifact_paths.generation_spec_json}")
-    print(f"Manifest: {artifact_paths.manifest_json}")
-    print(f"Report: {artifact_paths.report_md}")
+    print(f"Manifest: {manifest_path}")
+    print(f"Report: {manifest['artifacts']['report_md']}")
 
 
 if __name__ == "__main__":

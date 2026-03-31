@@ -210,6 +210,58 @@ def build_export_payload(
     }
 
 
+def export_user_profile_payload(
+    *,
+    user_id: str,
+    top_k: int = 20,
+    exclude_recent: bool = False,
+) -> dict[str, Any]:
+    song_embs = np.load(ensure_local_file(Config.SONG_EMB_PATH, "Song embedding matrix")).astype(np.float32)
+    song_ids_arr = np.load(ensure_local_file(Config.SONG_IDS_PATH, "Song ID array"), allow_pickle=True).astype(str)
+    user_embs = np.load(ensure_local_file(Config.USER_EMB_PATH, "User embedding matrix")).astype(np.float32)
+    user_ids = np.load(ensure_local_file(Config.USER_IDS_PATH, "User ID array"), allow_pickle=True).astype(str)
+
+    user_to_idx = {uid: i for i, uid in enumerate(user_ids)}
+    if user_id not in user_to_idx:
+        raise ValueError(f"user_id not found: {user_id}")
+    user_vec = user_embs[user_to_idx[user_id]]
+
+    scores = song_embs @ user_vec
+
+    if exclude_recent:
+        history = load_listening_history(ensure_local_file(Config.LISTENING_HISTORY_PATH, "Listening history table"))
+        listened = set(history.loc[history["user_id"] == user_id, "song_id"].astype(str).tolist())
+        if listened:
+            song_to_idx = {sid: i for i, sid in enumerate(song_ids_arr)}
+            listened_idxs = [song_to_idx[sid] for sid in listened if sid in song_to_idx]
+            scores = scores.copy()
+            scores[np.array(listened_idxs, dtype=np.int64)] = -1e9
+
+    k = max(1, top_k)
+    idx = np.argpartition(-scores, k - 1)[:k]
+    idx = idx[np.argsort(-scores[idx])]
+    sel_scores = scores[idx].astype(np.float64)
+    sel_song_ids = song_ids_arr[idx]
+    ranks = np.arange(1, len(idx) + 1)
+
+    info_df = load_id_information(ensure_local_file(Config.ID_INFORMATION_PATH, "Song information table"))
+    meta_df = load_id_metadata(ensure_local_file(Config.ID_METADATA_PATH, "Song metadata table"))
+    genres_df = _read_tsv_id_df(ensure_local_file(Config.ID_GENRES_PATH, "Song genre table"), "genres")
+    tags_df = _read_tsv_id_df(ensure_local_file(Config.ID_TAGS_PATH, "Song tag table"), "tags")
+
+    return build_export_payload(
+        user_id=user_id,
+        top_k=k,
+        song_ids=sel_song_ids,
+        scores=sel_scores,
+        ranks=ranks,
+        info_df=info_df,
+        meta_df=meta_df,
+        genres_df=genres_df,
+        tags_df=tags_df,
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Export Top-K nearest songs as JSON (info + metadata + genres/tags) for LLM downstream."
@@ -233,49 +285,10 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    song_embs = np.load(ensure_local_file(Config.SONG_EMB_PATH, "Song embedding matrix")).astype(np.float32)
-    song_ids_arr = np.load(ensure_local_file(Config.SONG_IDS_PATH, "Song ID array"), allow_pickle=True).astype(str)
-    user_embs = np.load(ensure_local_file(Config.USER_EMB_PATH, "User embedding matrix")).astype(np.float32)
-    user_ids = np.load(ensure_local_file(Config.USER_IDS_PATH, "User ID array"), allow_pickle=True).astype(str)
-
-    user_to_idx = {uid: i for i, uid in enumerate(user_ids)}
-    if args.user_id not in user_to_idx:
-        raise ValueError(f"user_id not found: {args.user_id}")
-    user_vec = user_embs[user_to_idx[args.user_id]]
-
-    scores = song_embs @ user_vec
-
-    if args.exclude_recent:
-        history = load_listening_history(ensure_local_file(Config.LISTENING_HISTORY_PATH, "Listening history table"))
-        listened = set(history.loc[history["user_id"] == args.user_id, "song_id"].astype(str).tolist())
-        if listened:
-            song_to_idx = {sid: i for i, sid in enumerate(song_ids_arr)}
-            listened_idxs = [song_to_idx[sid] for sid in listened if sid in song_to_idx]
-            scores = scores.copy()
-            scores[np.array(listened_idxs, dtype=np.int64)] = -1e9
-
-    k = max(1, args.top_k)
-    idx = np.argpartition(-scores, k - 1)[:k]
-    idx = idx[np.argsort(-scores[idx])]
-    sel_scores = scores[idx].astype(np.float64)
-    sel_song_ids = song_ids_arr[idx]
-    ranks = np.arange(1, len(idx) + 1)
-
-    info_df = load_id_information(ensure_local_file(Config.ID_INFORMATION_PATH, "Song information table"))
-    meta_df = load_id_metadata(ensure_local_file(Config.ID_METADATA_PATH, "Song metadata table"))
-    genres_df = _read_tsv_id_df(ensure_local_file(Config.ID_GENRES_PATH, "Song genre table"), "genres")
-    tags_df = _read_tsv_id_df(ensure_local_file(Config.ID_TAGS_PATH, "Song tag table"), "tags")
-
-    payload = build_export_payload(
+    payload = export_user_profile_payload(
         user_id=args.user_id,
-        top_k=k,
-        song_ids=sel_song_ids,
-        scores=sel_scores,
-        ranks=ranks,
-        info_df=info_df,
-        meta_df=meta_df,
-        genres_df=genres_df,
-        tags_df=tags_df,
+        top_k=args.top_k,
+        exclude_recent=args.exclude_recent,
     )
 
     text = json.dumps(payload, ensure_ascii=False, indent=2)
