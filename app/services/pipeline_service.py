@@ -13,6 +13,7 @@ from app.services.artifact_service import (
     load_profile_artifacts,
 )
 from src.embed.export_user_profile_json import export_user_profile_payload
+from src.eval.run_eval import evaluate_generation_run
 from src.generate.rerank import run_rerank_from_manifest
 from src.generate.run_generate import run_generation_pipeline
 from src.profile_prompt.build_profile_features import build_profile_features, save_summary
@@ -86,6 +87,11 @@ def run_generation_for_user(
     rerank_top_k: int = 2,
     rerank_diversity_threshold: float | None = None,
     rerank_encoder: str = "auto",
+    eval_recent_k: int = 20,
+    eval_top_reference_k: int = 3,
+    eval_encoder: str = "finetuned",
+    eval_save_plot: bool = True,
+    eval_imitation_threshold: float = 0.9,
 ) -> dict[str, Any]:
     run_id, manifest, manifest_path = run_generation_pipeline(
         prompt_output=prompt_output,
@@ -106,6 +112,16 @@ def run_generation_for_user(
         diversity_threshold=rerank_diversity_threshold,
         encoder=rerank_encoder,
     )
+    eval_result = evaluate_generation_run(
+        manifest_path=manifest_path,
+        recent_k=eval_recent_k,
+        top_reference_k=eval_top_reference_k,
+        encoder=eval_encoder,
+        rerank_top_k=rerank_top_k,
+        diversity_threshold=rerank_diversity_threshold,
+        save_plot=eval_save_plot,
+        imitation_threshold=eval_imitation_threshold,
+    )
     run_artifacts = load_generation_run(Path(manifest_path).parent)
     return {
         "run_id": run_id,
@@ -113,5 +129,6 @@ def run_generation_for_user(
         "manifest_path": manifest_path,
         "rerank_result": rerank_result,
         "rerank_output_path": rerank_output_path,
+        "eval_result": eval_result,
         "run_artifacts": run_artifacts,
     }

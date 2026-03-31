@@ -11,8 +11,10 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from app.services.artifact_service import (
+    EvalArtifacts,
     GenerationRunArtifacts,
     ProfileArtifacts,
+    load_eval_artifacts,
     load_latest_generation_run,
     load_profile_artifacts,
     read_binary_file,
@@ -84,7 +86,7 @@ def _render_track_card(track, index: int) -> None:
     left, right = st.columns([1, 2])
     with left:
         if track.cover_large_url or track.cover_url:
-            st.image(track.cover_large_url or track.cover_url, use_container_width=True)
+            st.image(track.cover_large_url or track.cover_url, width="stretch")
         else:
             st.caption("No cover image available.")
     with right:
@@ -142,6 +144,20 @@ def _render_generation_section(run_artifacts: GenerationRunArtifacts | None) -> 
     summary_cols[2].metric("Selected", selected_count)
     summary_cols[3].metric("Provider", run_artifacts.manifest.get("provider", "unknown"))
 
+    if run_artifacts.prompt_input:
+        with st.expander("Generation prompt input"):
+            profile_paragraph = run_artifacts.prompt_input.get("profile_paragraph")
+            style_keywords = run_artifacts.prompt_input.get("style_keywords") or []
+            if profile_paragraph:
+                st.markdown("**Profile paragraph used for generation**")
+                st.write(profile_paragraph)
+            if style_keywords:
+                st.markdown("**Style keywords used**")
+                st.write(", ".join(style_keywords))
+            if run_artifacts.prompt_input_path:
+                st.caption(f"Prompt input path: `{run_artifacts.prompt_input_path}`")
+            st.json(run_artifacts.prompt_input)
+
     selected_tab, candidates_tab, report_tab = st.tabs(["Selected tracks", "All candidates", "Run report"])
 
     with selected_tab:
@@ -164,11 +180,39 @@ def _render_generation_section(run_artifacts: GenerationRunArtifacts | None) -> 
             st.markdown(run_artifacts.report_markdown)
         else:
             st.info("No markdown report found for this run.")
+        if run_artifacts.prompt_input:
+            with st.expander("Prompt input JSON"):
+                st.json(run_artifacts.prompt_input)
         with st.expander("Manifest JSON"):
             st.json(run_artifacts.manifest)
         if run_artifacts.rerank:
             with st.expander("Rerank JSON"):
                 st.json(run_artifacts.rerank)
+
+
+def _render_saved_eval_summary(eval_artifacts: EvalArtifacts) -> None:
+    if eval_artifacts.summary:
+        run_summary = eval_artifacts.summary.get("run", {})
+        aggregate = eval_artifacts.summary.get("aggregate_metrics", {})
+        summary_cols = st.columns(4)
+        summary_cols[0].metric("Eval encoder", run_summary.get("encoder", "unknown"))
+        summary_cols[1].metric("Eval candidates", run_summary.get("candidate_count"))
+        summary_cols[2].metric("Eval selected", run_summary.get("selected_count"))
+        summary_cols[3].metric(
+            "Centroid gain",
+            (
+                f"{aggregate.get('gain_recent_centroid_cosine_mean'):.4f}"
+                if aggregate.get("gain_recent_centroid_cosine_mean") is not None
+                else "N/A"
+            ),
+        )
+
+        with st.expander("Eval summary JSON"):
+            st.json(eval_artifacts.summary)
+
+    if eval_artifacts.report_markdown:
+        with st.expander("Eval report"):
+            st.markdown(eval_artifacts.report_markdown)
 
 
 def _render_visualization_section(user_id: str, run_artifacts: GenerationRunArtifacts | None) -> None:
@@ -177,11 +221,37 @@ def _render_visualization_section(user_id: str, run_artifacts: GenerationRunArti
         st.info("Generate or load a run first to visualize it in embedding space.")
         return
 
-    viz_key = f"show_viz::{user_id}::{run_artifacts.run_id}"
-    if st.button("Render embedding space", key=viz_key):
-        st.session_state[viz_key] = True
+    eval_artifacts = load_eval_artifacts(user_id, run_artifacts.run_id)
+    has_saved_plot = eval_artifacts.plot_path.exists()
+    mode_options = ["saved eval plot", "live compute"]
+    default_mode = "saved eval plot" if has_saved_plot else "live compute"
+    mode_key = f"viz_mode::{user_id}::{run_artifacts.run_id}"
+    selected_mode = st.radio(
+        "Visualization mode",
+        options=mode_options,
+        horizontal=True,
+        index=mode_options.index(default_mode),
+        key=mode_key,
+    )
 
-    if not st.session_state.get(viz_key):
+    if selected_mode == "saved eval plot":
+        if not has_saved_plot:
+            st.info(
+                "No saved eval plot was found for this run yet. "
+                "Run eval with `--save-plot`, or switch to `live compute`."
+            )
+            return
+        st.image(str(eval_artifacts.plot_path), width="stretch")
+        st.caption(f"Saved eval plot: `{eval_artifacts.plot_path}`")
+        _render_saved_eval_summary(eval_artifacts)
+        return
+
+    viz_state_key = f"show_viz::{user_id}::{run_artifacts.run_id}"
+    viz_button_key = f"render_viz_button::{user_id}::{run_artifacts.run_id}"
+    if st.button("Render embedding space", key=viz_button_key):
+        st.session_state[viz_state_key] = True
+
+    if not st.session_state.get(viz_state_key):
         st.caption("Rendering the plot loads CLAP and embeds recent listens plus generated tracks, so it is kept explicit.")
         return
 
@@ -194,7 +264,7 @@ def _render_visualization_section(user_id: str, run_artifacts: GenerationRunArti
     st.caption(f"Visualization encoder: {encoder_name}")
     st.dataframe(
         plot_df[["encoder", "group", "label", "rerank_score", "path", "x", "y"]],
-        use_container_width=True,
+        width="stretch",
     )
 
 
@@ -202,7 +272,7 @@ def main() -> None:
     st.title("Gen4Rec Streamlit Demo")
     st.write(
         "A local demo for user profile analysis, one-click Suno generation, reranking, "
-        "and embedding-space visualization."
+        "automatic eval, and embedding-space visualization."
     )
 
     try:
@@ -292,7 +362,7 @@ def main() -> None:
                 st.error("Diversity threshold must be empty or a valid float.")
                 st.stop()
 
-            with st.spinner("Running generation and rerank..."):
+            with st.spinner("Running generation, rerank, and eval..."):
                 generation_result = run_generation_for_user(
                     user_id=user_id,
                     prompt_output=profile_artifacts.prompt,
@@ -308,7 +378,7 @@ def main() -> None:
                     rerank_encoder=rerank_encoder,
                 )
             run_artifacts = generation_result["run_artifacts"]
-            st.success(f"Generation finished. Latest run: {run_artifacts.run_id}")
+            st.success(f"Generation, rerank, and eval finished. Latest run: {run_artifacts.run_id}")
 
     _render_generation_section(run_artifacts)
     _render_visualization_section(user_id, run_artifacts)

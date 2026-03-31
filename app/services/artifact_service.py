@@ -13,6 +13,7 @@ REPO_ROOT = CURRENT_FILE.parent.parent.parent
 OUTPUTS_ROOT = REPO_ROOT / "outputs"
 PROFILES_ROOT = OUTPUTS_ROOT / "profiles"
 RECSONGS_ROOT = OUTPUTS_ROOT / "recSongs"
+EVAL_ROOT = OUTPUTS_ROOT / "eval"
 
 
 def _load_json_if_exists(path: Path) -> dict[str, Any] | None:
@@ -77,6 +78,19 @@ class GenerationRunArtifacts:
     tracks: list[TrackArtifact]
 
 
+@dataclass
+class EvalArtifacts:
+    user_id: str
+    run_id: str
+    eval_root: Path
+    summary_path: Path
+    report_path: Path
+    plot_path: Path
+    reference_alignment_csv_path: Path
+    summary: dict[str, Any] | None
+    report_markdown: str | None
+
+
 def get_profile_paths(user_id: str) -> dict[str, Path]:
     safe_user_id = sanitize_segment(user_id)
     return {
@@ -107,6 +121,34 @@ def list_generation_run_dirs(user_id: str) -> list[Path]:
     if not user_root.exists():
         return []
     return sorted([path for path in user_root.iterdir() if path.is_dir()], reverse=True)
+
+
+def get_eval_paths(user_id: str, run_id: str) -> dict[str, Path]:
+    safe_user_id = sanitize_segment(user_id)
+    safe_run_id = sanitize_segment(run_id)
+    eval_root = EVAL_ROOT / safe_user_id / safe_run_id
+    return {
+        "eval_root": eval_root,
+        "summary": eval_root / "eval_summary.json",
+        "report": eval_root / "eval_report.md",
+        "plot": eval_root / "embedding_space.png",
+        "reference_alignment_csv": eval_root / "reference_alignment.csv",
+    }
+
+
+def load_eval_artifacts(user_id: str, run_id: str) -> EvalArtifacts:
+    paths = get_eval_paths(user_id, run_id)
+    return EvalArtifacts(
+        user_id=user_id,
+        run_id=run_id,
+        eval_root=paths["eval_root"],
+        summary_path=paths["summary"],
+        report_path=paths["report"],
+        plot_path=paths["plot"],
+        reference_alignment_csv_path=paths["reference_alignment_csv"],
+        summary=_load_json_if_exists(paths["summary"]),
+        report_markdown=_load_text_if_exists(paths["report"]),
+    )
 
 
 def _build_tracks_from_run(manifest: dict[str, Any], rerank: dict[str, Any] | None) -> list[TrackArtifact]:

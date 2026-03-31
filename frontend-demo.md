@@ -7,7 +7,7 @@ This is a local Streamlit demo for:
 - loading a `user_id`
 - viewing the listener profile built from recent listening history
 - triggering Suno generation with one click
-- browsing generated tracks, cover art, rerank scores, and reports
+- browsing generated tracks, cover art, rerank scores, eval outputs, and reports
 - visualizing recent listens and generated songs in CLAP embedding space
 
 The demo is meant for local research / internal presentation use. It is not a production web app.
@@ -67,15 +67,18 @@ Optional path overrides still work through the existing `GEN4REC_*` environment 
    - run Suno generation
    - save a new run under `outputs/recSongs/<USER_ID>/<RUN_ID>/`
    - rerank the generated candidates with CLAP
+   - run automatic eval and save artifacts under `outputs/eval/<USER_ID>/<RUN_ID>/`
 7. Review:
    - selected tracks
    - all candidates
    - cover art and audio
    - `report.md`
    - embedding visualization
+   - saved eval plot / summary when available
 
 ## Notes
 
 - The app prefers the fine-tuned CLAP checkpoint for visualization and falls back to zero-shot if needed.
+- Visualization supports two modes: reading a saved plot from `outputs/eval/<USER_ID>/<RUN_ID>/` or computing the plot live in-app.
 - Generation is explicit and button-driven; nothing expensive runs automatically on page load.
 - The current app assumes a local single-user demo workflow and reads artifacts directly from `outputs/`.
