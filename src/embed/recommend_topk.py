@@ -41,6 +41,16 @@ class Config:
     )
 
 
+def ensure_local_file(path: str, description: str) -> str:
+    if os.path.exists(path):
+        return path
+    raise FileNotFoundError(
+        f"{description} not found at {path}. "
+        "Please download or copy this file and place it at that path, "
+        "or override the default location with the corresponding GEN4REC_* environment variable."
+    )
+
+
 def load_listening_history(path: str) -> pd.DataFrame:
     df = pd.read_csv(path, sep="\t")
     if len(df.columns) == 1 and "\t" in df.columns[0]:
@@ -120,11 +130,11 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    song_embs = np.load(Config.SONG_EMB_PATH).astype(np.float32)
+    song_embs = np.load(ensure_local_file(Config.SONG_EMB_PATH, "Song embedding matrix")).astype(np.float32)
     # IDs may be stored as object arrays depending on how npy was created.
-    song_ids = np.load(Config.SONG_IDS_PATH, allow_pickle=True).astype(str)
-    user_embs = np.load(Config.USER_EMB_PATH).astype(np.float32)
-    user_ids = np.load(Config.USER_IDS_PATH, allow_pickle=True).astype(str)
+    song_ids = np.load(ensure_local_file(Config.SONG_IDS_PATH, "Song ID array"), allow_pickle=True).astype(str)
+    user_embs = np.load(ensure_local_file(Config.USER_EMB_PATH, "User embedding matrix")).astype(np.float32)
+    user_ids = np.load(ensure_local_file(Config.USER_IDS_PATH, "User ID array"), allow_pickle=True).astype(str)
 
     user_to_idx = {uid: i for i, uid in enumerate(user_ids)}
     if args.user_id not in user_to_idx:
@@ -155,11 +165,11 @@ def main() -> None:
     )
 
     if args.with_info:
-        info_df = load_song_metadata(Config.ID_INFORMATION_PATH)
+        info_df = load_song_metadata(ensure_local_file(Config.ID_INFORMATION_PATH, "Song information table"))
         result = result.merge(info_df, left_on="song_id", right_on="id", how="left").drop(columns=["id"])
 
     if args.with_metadata:
-        meta_df = load_audio_metadata(Config.ID_METADATA_PATH)
+        meta_df = load_audio_metadata(ensure_local_file(Config.ID_METADATA_PATH, "Song metadata table"))
         result = result.merge(meta_df, left_on="song_id", right_on="id", how="left").drop(columns=["id"])
 
     if args.with_info or args.with_metadata:

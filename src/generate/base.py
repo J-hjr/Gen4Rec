@@ -63,6 +63,10 @@ class GeneratedSample:
     mime_type: str
     text_companion: str | None = None
     source_url: str | None = None
+    metadata_path: str | None = None
+    call_index: int | None = None
+    variant_index: int | None = None
+    title: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

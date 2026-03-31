@@ -95,3 +95,36 @@ Each run currently saves:
 `run_manifest.json` also includes a `candidate_audio_paths` list so the next rerank stage can directly consume the generated clip paths.
 
 This stage does not modify the current `profile_prompt` implementation. It only consumes its output.
+
+---
+
+## Rerank generated candidates (`rerank.py`)
+
+```bash
+python src/generate/rerank.py --manifest outputs/recSongs/<USER_ID>/<RUN_ID>/run_manifest.json
+python src/generate/rerank.py --manifest outputs/recSongs/<USER_ID>/<RUN_ID>/run_manifest.json --top-k 2 --diversity-threshold 0.95
+python src/generate/rerank.py --manifest outputs/recSongs/<USER_ID>/<RUN_ID>/run_manifest.json --encoder zeroshot
+```
+
+What it does:
+
+- loads `candidate_audio_paths` from the generation manifest
+- embeds each generated audio clip with CLAP
+- computes cosine similarity between each clip embedding and the target `user_embedding`
+- sorts candidates by CLAP cosine score
+- optionally filters near-duplicate candidates with a diversity threshold
+- saves `rerank_results.json` next to the manifest by default
+
+| Parameter | Meaning |
+|-----------|---------|
+| `--manifest` | **Required.** Path to a generation run manifest JSON. |
+| `--top-k` | How many final tracks to keep after reranking (default `2`). |
+| `--diversity-threshold` | Optional cosine threshold for filtering near-duplicate clips. If omitted, reranking is score-only. |
+| `--encoder` | Which CLAP encoder to use: `auto`, `finetuned`, or `zeroshot` (default `auto`). `auto` falls back to zero-shot if the fine-tuned checkpoint is unavailable. |
+| `--output` | Optional custom output path for the rerank JSON. |
+
+`rerank_results.json` includes:
+
+- per-candidate CLAP cosine scores
+- the full reranked list
+- the final selected tracks after optional diversity filtering

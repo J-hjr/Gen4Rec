@@ -14,7 +14,10 @@ conda env create -f environment.yaml
 
 - Reorganize the repository input and output structure so file locations are clear and consistent.
 - Make sure every pipeline step uses aligned inputs and outputs end-to-end, with no path or naming mismatches.
-- Decide on a clear storage strategy for embedding files and make sure their placement is consistent across the project (Cloud or Local).
+- Decide on a clear storage strategy for embedding files and make sure their placement is consistent across the project  (Cloud or Local).
+- Improve the Suno prompt package, including better prompt formatting, lyrics handling, title generation, and related generation controls.
+- Design and implement an evaluation pipeline for generated tracks, including rerank quality checks and reportable metrics.
+
 
 ### Update an existing environment
 

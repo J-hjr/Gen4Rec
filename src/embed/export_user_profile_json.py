@@ -54,6 +54,16 @@ class Config:
     ID_TAGS_PATH = resolve_path("GEN4REC_ID_TAGS_PATH", Path(DATASET_PATH) / "id_tags.csv")
 
 
+def ensure_local_file(path: str, description: str) -> str:
+    if os.path.exists(path):
+        return path
+    raise FileNotFoundError(
+        f"{description} not found at {path}. "
+        "Please download or copy this file and place it at that path, "
+        "or override the default location with the corresponding GEN4REC_* environment variable."
+    )
+
+
 def load_listening_history(path: str) -> pd.DataFrame:
     df = pd.read_csv(path, sep="\t")
     if len(df.columns) == 1 and "\t" in df.columns[0]:
@@ -223,10 +233,10 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    song_embs = np.load(Config.SONG_EMB_PATH).astype(np.float32)
-    song_ids_arr = np.load(Config.SONG_IDS_PATH, allow_pickle=True).astype(str)
-    user_embs = np.load(Config.USER_EMB_PATH).astype(np.float32)
-    user_ids = np.load(Config.USER_IDS_PATH, allow_pickle=True).astype(str)
+    song_embs = np.load(ensure_local_file(Config.SONG_EMB_PATH, "Song embedding matrix")).astype(np.float32)
+    song_ids_arr = np.load(ensure_local_file(Config.SONG_IDS_PATH, "Song ID array"), allow_pickle=True).astype(str)
+    user_embs = np.load(ensure_local_file(Config.USER_EMB_PATH, "User embedding matrix")).astype(np.float32)
+    user_ids = np.load(ensure_local_file(Config.USER_IDS_PATH, "User ID array"), allow_pickle=True).astype(str)
 
     user_to_idx = {uid: i for i, uid in enumerate(user_ids)}
     if args.user_id not in user_to_idx:
@@ -236,7 +246,7 @@ def main() -> None:
     scores = song_embs @ user_vec
 
     if args.exclude_recent:
-        history = load_listening_history(Config.LISTENING_HISTORY_PATH)
+        history = load_listening_history(ensure_local_file(Config.LISTENING_HISTORY_PATH, "Listening history table"))
         listened = set(history.loc[history["user_id"] == args.user_id, "song_id"].astype(str).tolist())
         if listened:
             song_to_idx = {sid: i for i, sid in enumerate(song_ids_arr)}
@@ -251,10 +261,10 @@ def main() -> None:
     sel_song_ids = song_ids_arr[idx]
     ranks = np.arange(1, len(idx) + 1)
 
-    info_df = load_id_information(Config.ID_INFORMATION_PATH)
-    meta_df = load_id_metadata(Config.ID_METADATA_PATH)
-    genres_df = _read_tsv_id_df(Config.ID_GENRES_PATH, "genres")
-    tags_df = _read_tsv_id_df(Config.ID_TAGS_PATH, "tags")
+    info_df = load_id_information(ensure_local_file(Config.ID_INFORMATION_PATH, "Song information table"))
+    meta_df = load_id_metadata(ensure_local_file(Config.ID_METADATA_PATH, "Song metadata table"))
+    genres_df = _read_tsv_id_df(ensure_local_file(Config.ID_GENRES_PATH, "Song genre table"), "genres")
+    tags_df = _read_tsv_id_df(ensure_local_file(Config.ID_TAGS_PATH, "Song tag table"), "tags")
 
     payload = build_export_payload(
         user_id=args.user_id,

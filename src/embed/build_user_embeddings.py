@@ -79,6 +79,16 @@ class Config:
     )
 
 
+def ensure_local_file(path: str, description: str) -> str:
+    if os.path.exists(path):
+        return path
+    raise FileNotFoundError(
+        f"{description} not found at {path}. "
+        "Please download or copy this file and place it at that path, "
+        "or override the default location with the corresponding GEN4REC_* environment variable."
+    )
+
+
 def load_listening_history(path: str) -> pd.DataFrame:
     df = pd.read_csv(path, sep="\t")
 
@@ -112,7 +122,7 @@ def load_listening_history(path: str) -> pd.DataFrame:
 
 def ensure_song_ids(song_ids_path: str, id_genres_path: str, expected_n: int) -> np.ndarray:
     if os.path.exists(song_ids_path):
-        song_ids = np.load(song_ids_path)
+        song_ids = np.load(song_ids_path, allow_pickle=True)
         if len(song_ids) != expected_n:
             raise ValueError(
                 f"music4all_ids.npy length mismatch: {len(song_ids)} vs embeddings rows {expected_n}."
@@ -120,6 +130,7 @@ def ensure_song_ids(song_ids_path: str, id_genres_path: str, expected_n: int) ->
         return song_ids.astype(str)
 
     # Support both header and no-header variants of id_genres.csv.
+    ensure_local_file(id_genres_path, "Song genre table")
     id_df = pd.read_csv(id_genres_path, sep="\t")
     if "id" in id_df.columns:
         song_ids = id_df["id"].astype(str).to_numpy()
@@ -261,14 +272,14 @@ def main() -> None:
     os.makedirs(Config.EMBEDDINGS_DIR, exist_ok=True)
 
     print(f"Loading song embeddings from {Config.SONG_EMB_PATH}")
-    song_embs = np.load(Config.SONG_EMB_PATH).astype(np.float32)
+    song_embs = np.load(ensure_local_file(Config.SONG_EMB_PATH, "Song embedding matrix")).astype(np.float32)
     print(f"Song embeddings shape: {song_embs.shape}")
 
     song_ids = ensure_song_ids(Config.SONG_IDS_PATH, Config.ID_GENRES_PATH, expected_n=song_embs.shape[0])
     print(f"Song ids count: {len(song_ids)}")
 
     print(f"Loading listening history from {Config.LISTENING_HISTORY_PATH}")
-    listening_df = load_listening_history(Config.LISTENING_HISTORY_PATH)
+    listening_df = load_listening_history(ensure_local_file(Config.LISTENING_HISTORY_PATH, "Listening history table"))
     print(f"Listening events: {len(listening_df)}")
 
     user_ids, user_embs, stats_df = build_user_embeddings(
