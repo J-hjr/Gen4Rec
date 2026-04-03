@@ -343,7 +343,7 @@ def main() -> None:
         top_k = st.number_input("Retrieval top-k", min_value=5, max_value=100, value=20, step=5)
         top_n = st.number_input("Summary top-n", min_value=5, max_value=100, value=20, step=5)
         exclude_recent = st.checkbox("Exclude recently listened songs", value=True)
-        openai_model = st.text_input("OpenAI model", value="gpt-4.1-mini")
+        openai_model = st.text_input("OpenAI model", value="gpt-5.3-mini")
         force_rebuild_profile = st.checkbox("Force rebuild profile artifacts", value=False)
 
         load_profile_clicked = st.button("Load profile")

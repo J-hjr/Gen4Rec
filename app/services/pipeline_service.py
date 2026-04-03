@@ -45,7 +45,7 @@ def build_or_load_profile(
     top_k: int = 20,
     top_n: int = 20,
     exclude_recent: bool = True,
-    openai_model: str = "gpt-4.1-mini",
+    openai_model: str = "gpt-5.3-mini",
     force_rebuild: bool = False,
 ) -> ProfileArtifacts:
     artifacts = load_profile_artifacts(user_id)
