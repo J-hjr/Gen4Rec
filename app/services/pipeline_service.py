@@ -88,7 +88,7 @@ def run_generation_for_user(
     rerank_diversity_threshold: float | None = None,
     rerank_encoder: str = "auto",
     eval_recent_k: int = 20,
-    eval_top_reference_k: int = 3,
+    eval_reference_top_k: int = 3,
     eval_encoder: str = "finetuned",
     eval_save_plot: bool = True,
     eval_imitation_threshold: float = 0.9,
@@ -115,7 +115,7 @@ def run_generation_for_user(
     eval_result = evaluate_generation_run(
         manifest_path=manifest_path,
         recent_k=eval_recent_k,
-        top_reference_k=eval_top_reference_k,
+        reference_top_k=eval_reference_top_k,
         encoder=eval_encoder,
         rerank_top_k=rerank_top_k,
         diversity_threshold=rerank_diversity_threshold,

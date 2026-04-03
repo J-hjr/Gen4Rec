@@ -40,7 +40,7 @@ If `--encoder auto` falls back to zero-shot CLAP, that encoder choice is recorde
 ## Useful Flags
 
 - `--recent-k`: how many recent listened songs to use as the reference set
-- `--top-reference-k`: top-N reference similarities to average for the `reference_topn_mean_cosine` metric
+- `--reference-top-k`: how many nearest reference tracks to average for the `reference_topk_mean_cosine` metric
 - `--rerank-top-k`: only used if `rerank_results.json` is missing and rerank must be recomputed
 - `--diversity-threshold`: only used if rerank must be recomputed
 - `--save-plot`: save `embedding_space.png`
@@ -53,7 +53,7 @@ Example:
 python src/eval/run_eval.py \
   --manifest outputs/recSongs/<USER_ID>/<RUN_ID>/run_manifest.json \
   --recent-k 20 \
-  --top-reference-k 3 \
+  --reference-top-k 3 \
   --save-plot
 ```
 
@@ -66,13 +66,19 @@ By default the command writes to `outputs/eval/<USER_ID>/<RUN_ID>/`:
 - `reference_alignment.csv`
 - `embedding_space.png` when `--save-plot` is enabled
 
+The JSON and markdown report also expose a simplified three-panel summary:
+
+- `personalization`
+- `diversity`
+- `risk`
+
 ## Metric Summary
 
 - `user_embedding_cosine`: similarity to the stored `user_embeddings.npy` vector
 - `recent_centroid_cosine`: similarity to the centroid of embedded Recent-K reference tracks
 - `reference_mean_cosine`: mean similarity to the full Recent-K reference set
 - `reference_max_cosine`: best match to any single reference track
-- `reference_topn_mean_cosine`: mean of the top-N reference similarities
+- `reference_topk_mean_cosine`: mean of the top-k nearest reference similarities
 - diversity metrics: pairwise and nearest-neighbor similarities within candidate and selected sets
 - novelty proxy: a boolean flag when a generated clip is very close to a reference track
 

@@ -34,6 +34,14 @@ def get_available_users() -> list[str]:
     return load_available_users()
 
 
+def _format_metric_value(value: float | int | None) -> str:
+    if value is None:
+        return "N/A"
+    if isinstance(value, float):
+        return f"{value:.4f}"
+    return str(value)
+
+
 def _render_profile_section(profile_artifacts: ProfileArtifacts) -> None:
     prompt = profile_artifacts.prompt
     summary = (prompt or {}).get("input_summary") or profile_artifacts.summary or {}
@@ -193,19 +201,56 @@ def _render_generation_section(run_artifacts: GenerationRunArtifacts | None) -> 
 def _render_saved_eval_summary(eval_artifacts: EvalArtifacts) -> None:
     if eval_artifacts.summary:
         run_summary = eval_artifacts.summary.get("run", {})
-        aggregate = eval_artifacts.summary.get("aggregate_metrics", {})
+        panels = eval_artifacts.summary.get("metric_panels", {})
+        personalization_panel = panels.get("personalization", {})
+        reference_topk_value = personalization_panel.get("selected_reference_topk_mean_cosine_mean")
+        if reference_topk_value is None:
+            reference_topk_value = personalization_panel.get("selected_reference_topn_mean_cosine_mean")
         summary_cols = st.columns(4)
         summary_cols[0].metric("Eval encoder", run_summary.get("encoder", "unknown"))
         summary_cols[1].metric("Eval candidates", run_summary.get("candidate_count"))
         summary_cols[2].metric("Eval selected", run_summary.get("selected_count"))
-        summary_cols[3].metric(
-            "Centroid gain",
-            (
-                f"{aggregate.get('gain_recent_centroid_cosine_mean'):.4f}"
-                if aggregate.get("gain_recent_centroid_cosine_mean") is not None
-                else "N/A"
-            ),
-        )
+        summary_cols[3].metric("Recent-K", eval_artifacts.summary.get("reference_set", {}).get("recent_k"))
+
+        personalization_col, diversity_col, risk_col = st.columns(3)
+        with personalization_col:
+            st.markdown("**Personalization**")
+            st.metric(
+                "User alignment",
+                _format_metric_value(personalization_panel.get("selected_user_embedding_cosine_mean")),
+            )
+            st.metric(
+                "Centroid alignment",
+                _format_metric_value(personalization_panel.get("selected_recent_centroid_cosine_mean")),
+            )
+            st.metric(
+                "Reference top-k",
+                _format_metric_value(reference_topk_value),
+            )
+
+        with diversity_col:
+            st.markdown("**Diversity**")
+            st.metric(
+                "Selected pairwise cosine",
+                _format_metric_value(panels.get("diversity", {}).get("selected_mean_pairwise_cosine")),
+            )
+            st.metric(
+                "Selected nearest-neighbor",
+                _format_metric_value(panels.get("diversity", {}).get("selected_mean_nearest_neighbor_cosine")),
+            )
+            st.caption("Lower values usually mean the kept songs are less redundant.")
+
+        with risk_col:
+            st.markdown("**Risk**")
+            st.metric(
+                "Selected too-close count",
+                _format_metric_value(panels.get("risk", {}).get("selected_too_close_to_reference_count")),
+            )
+            st.metric(
+                "Candidate too-close count",
+                _format_metric_value(panels.get("risk", {}).get("candidate_too_close_to_reference_count")),
+            )
+            st.caption("Tracks flagged here may be overly close to one reference song.")
 
         with st.expander("Eval summary JSON"):
             st.json(eval_artifacts.summary)

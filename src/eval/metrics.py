@@ -37,22 +37,22 @@ def compute_reference_similarity_metrics(
     clip_embedding: np.ndarray,
     reference_embeddings: list[np.ndarray],
     *,
-    top_n: int,
+    reference_top_k: int,
 ) -> dict[str, float | None]:
     if not reference_embeddings:
         return {
             "reference_mean_cosine": None,
             "reference_max_cosine": None,
-            "reference_topn_mean_cosine": None,
+            "reference_topk_mean_cosine": None,
         }
 
     sims = [cosine_similarity(clip_embedding, ref_embedding) for ref_embedding in reference_embeddings]
     sorted_sims = sorted(sims, reverse=True)
-    top_slice = sorted_sims[: max(1, min(top_n, len(sorted_sims)))]
+    top_slice = sorted_sims[: max(1, min(reference_top_k, len(sorted_sims)))]
     return {
         "reference_mean_cosine": float(np.mean(sims)),
         "reference_max_cosine": float(np.max(sims)),
-        "reference_topn_mean_cosine": float(np.mean(top_slice)),
+        "reference_topk_mean_cosine": float(np.mean(top_slice)),
     }
 
 
@@ -116,7 +116,7 @@ def build_candidate_metrics(
     reference_embeddings: list[np.ndarray],
     reference_labels: list[str],
     recent_centroid: np.ndarray | None,
-    top_reference_k: int,
+    reference_top_k: int,
     imitation_threshold: float,
 ) -> list[dict[str, Any]]:
     enriched: list[dict[str, Any]] = []
@@ -130,7 +130,7 @@ def build_candidate_metrics(
         reference_metrics = compute_reference_similarity_metrics(
             clip_embedding,
             reference_embeddings,
-            top_n=top_reference_k,
+            reference_top_k=reference_top_k,
         )
         row.update(reference_metrics)
 

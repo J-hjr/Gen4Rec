@@ -97,16 +97,47 @@ def _aggregate_candidate_metrics(candidates: list[dict[str, Any]], *, selected_o
         "recent_centroid_cosine_mean": summarize_values(collect("recent_centroid_cosine"))["mean"],
         "reference_mean_cosine_mean": summarize_values(collect("reference_mean_cosine"))["mean"],
         "reference_max_cosine_mean": summarize_values(collect("reference_max_cosine"))["mean"],
-        "reference_topn_mean_cosine_mean": summarize_values(collect("reference_topn_mean_cosine"))["mean"],
+        "reference_topk_mean_cosine_mean": summarize_values(collect("reference_topk_mean_cosine"))["mean"],
     }
     return summary
+
+
+def _build_metric_panels(
+    *,
+    aggregate_metrics: dict[str, float | None],
+    diversity_metrics: dict[str, float | None],
+    candidates_with_metrics: list[dict[str, Any]],
+) -> dict[str, dict[str, float | int | None]]:
+    selected_rows = [row for row in candidates_with_metrics if row["is_selected"]]
+    selected_too_close_count = int(sum(1 for row in selected_rows if row.get("too_close_to_reference") is True))
+    return {
+        "personalization": {
+            "selected_user_embedding_cosine_mean": aggregate_metrics.get("selected_user_embedding_cosine_mean"),
+            "gain_user_embedding_cosine_mean": aggregate_metrics.get("gain_user_embedding_cosine_mean"),
+            "selected_recent_centroid_cosine_mean": aggregate_metrics.get("selected_recent_centroid_cosine_mean"),
+            "gain_recent_centroid_cosine_mean": aggregate_metrics.get("gain_recent_centroid_cosine_mean"),
+            "selected_reference_topk_mean_cosine_mean": aggregate_metrics.get(
+                "selected_reference_topk_mean_cosine_mean"
+            ),
+            "gain_reference_topk_mean_cosine_mean": aggregate_metrics.get("gain_reference_topk_mean_cosine_mean"),
+        },
+        "diversity": {
+            "selected_mean_pairwise_cosine": diversity_metrics.get("selected_mean_pairwise_cosine"),
+            "selected_mean_nearest_neighbor_cosine": diversity_metrics.get("selected_mean_nearest_neighbor_cosine"),
+            "candidate_mean_pairwise_cosine": diversity_metrics.get("candidate_mean_pairwise_cosine"),
+        },
+        "risk": {
+            "candidate_too_close_to_reference_count": diversity_metrics.get("too_close_to_reference_count"),
+            "selected_too_close_to_reference_count": selected_too_close_count,
+        },
+    }
 
 
 def evaluate_generation_run(
     *,
     manifest_path: str | Path,
     recent_k: int = 20,
-    top_reference_k: int = 3,
+    reference_top_k: int = 3,
     encoder: str = "finetuned",
     rerank_top_k: int = 2,
     diversity_threshold: float | None = None,
@@ -153,7 +184,7 @@ def evaluate_generation_run(
         reference_embeddings=reference_embeddings,
         reference_labels=reference_labels,
         recent_centroid=recent_centroid,
-        top_reference_k=top_reference_k,
+        reference_top_k=reference_top_k,
         imitation_threshold=imitation_threshold,
     )
 
@@ -179,6 +210,11 @@ def evaluate_generation_run(
             sum(1 for row in candidates_with_metrics if row.get("too_close_to_reference") is True)
         ),
     }
+    metric_panels = _build_metric_panels(
+        aggregate_metrics=aggregate_metrics,
+        diversity_metrics=diversity_metrics,
+        candidates_with_metrics=candidates_with_metrics,
+    )
 
     plot_reference_tracks = []
     for track in reference_tracks:
@@ -232,9 +268,10 @@ def evaluate_generation_run(
         "reference_set": {
             "recent_k": int(recent_k),
             "reference_track_count": len(reference_tracks),
-            "top_reference_k": int(top_reference_k),
+            "reference_top_k": int(reference_top_k),
             "labels": reference_labels,
         },
+        "metric_panels": metric_panels,
         "aggregate_metrics": aggregate_metrics,
         "diversity_metrics": diversity_metrics,
         "candidates": [
@@ -263,10 +300,16 @@ def main() -> None:
     parser.add_argument("--manifest", required=True, help="Path to a generation run manifest JSON.")
     parser.add_argument("--recent-k", type=int, default=20, help="How many recent listened songs to embed as references.")
     parser.add_argument(
-        "--top-reference-k",
+        "--reference-top-k",
         type=int,
         default=3,
-        help="How many top reference similarities to average for the top-n mean metric.",
+        help="How many nearest reference tracks to average for the reference top-k mean metric.",
+    )
+    parser.add_argument(
+        "--top-reference-k",
+        dest="reference_top_k",
+        type=int,
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--encoder",
@@ -307,7 +350,7 @@ def main() -> None:
     summary = evaluate_generation_run(
         manifest_path=args.manifest,
         recent_k=max(1, args.recent_k),
-        top_reference_k=max(1, args.top_reference_k),
+        reference_top_k=max(1, args.reference_top_k),
         encoder=args.encoder,
         rerank_top_k=max(1, args.rerank_top_k),
         diversity_threshold=args.diversity_threshold,
