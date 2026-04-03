@@ -74,7 +74,7 @@ Return JSON only.
 
 def generate_music_prompt(
     summary: Dict[str, Any],
-    model: str = "gpt-4.1-mini",
+    model: str = "gpt-5.3-mini",
 ) -> Dict[str, Any]:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
@@ -174,7 +174,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model",
         type=str,
-        default="gpt-4.1-mini",
+        default="gpt-5.3-mini",
         help="OpenAI model name."
     )
 
